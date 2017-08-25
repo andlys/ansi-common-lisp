@@ -1,4 +1,4 @@
-# Code scratches from Paul Graham's book 'ANSI Common Lisp'
+## Code scratches from Paul Graham's book 'ANSI Common Lisp'
 
 Currently, code is present to chapter 6.
 
