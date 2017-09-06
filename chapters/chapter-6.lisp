@@ -59,6 +59,65 @@
 
 (funcall (constantly 42) '(1 2 3 4) 5 6 7)
 
+(defun our-complement (func)
+  #'(lambda (&rest args)
+      (not (apply func args))))
+(mapcar (our-complement #'oddp) '(1 2 3 4 5 6))
+
+;; several closures that share a variable
+(let ((counter 0))
+  (defun my-reset ()
+    (setf counter 0))
+  (defun my-inc()
+    (incf counter)))
+
+(list (my-inc) (my-inc) (my-reset) (my-inc))
+
+(mapcar (complement #'oddp) '(1 2 3 4 5 6))
+
+
+;; compose function returns a function that calls sequentially a set of
+;; functions on some data
+;; works like reduce. implemented by reduce
+;; (compose #'f1 #'f2 #'f3 data)
+;; is equivalent to
+;; (lambda (data) (f1 (f2 (f3 data))))
+(defun compose (&rest funcs)
+  #'(lambda (&rest args)
+      (reduce #'(lambda (v f) (funcall f v))
+              (cdr (reverse funcs))
+              :initial-value (apply (car (reverse funcs)) args))))
+
+(mapcar (compose #'list #'round #'sqrt)
+        '(4 9 16 25))
+(mapcar (compose #'oddp #'car #'list #'round #'sqrt)
+        '(4 9 16 25))
+(defun get-last (lst)
+  (funcall (compose #'car #'reverse) lst))
+(get-last '(a b c d e f))
+
+;; curry function returns a function that calls some function to which
+;; many (nested) arguments are applied
+;; TODO
+(defun curry (fn &rest args)
+  #'(lambda (&rest args2)
+      (apply fn (append args args2))))
+
+(funcall (curry #'list 'a 'b 'c) 'd)
+
+(defun disjoin (fn &rest fns)
+  (if (null fns)
+      fn
+      (let ((disj (apply #'disjoin fns)))
+        #'(lambda (&rest args)
+            (or (apply fn args) (apply disj args))))))
+
+(funcall (disjoin #'< #'=) 3 5)
+(funcall (disjoin #'< #'=) 5 5)
+(funcall (disjoin #'< #'=) 6 5)
+(mapcar (disjoin #'integerp #'symbolp)
+       '(a "a" 2 3 (a b c)))
+
 (let ((*print-base* 16))
     (princ 32))
 
@@ -66,4 +125,3 @@
 (compiled-function-p #'foo)
 
 (compile 'foo)
-
