@@ -98,7 +98,6 @@
 
 ;; curry function returns a function that calls some function to which
 ;; many (nested) arguments are applied
-;; TODO
 (defun curry (fn &rest args)
   #'(lambda (&rest args2)
       (apply fn (append args args2))))

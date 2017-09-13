@@ -9,7 +9,6 @@
 
 ;;; ex-6
 ;; closure technique used
-;; TODO add  this to advantages.lisp
 ;; description: function that takes one number and returns the greatest number
 ;; passed to it so far
 (let (lst)
