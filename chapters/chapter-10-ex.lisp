@@ -28,7 +28,11 @@
 
 ;; ex-3
 (defmacro nth-expr (n &rest args)
-  `(eval (nth (- ,n 1) '(,@args)))) ; TODO rewrite this without eval function
+  `(case ,n
+     ,@(let ((i 0))
+       (mapcar #'(lambda (expr)
+		   `(,(incf i) ,expr))
+	       args)))))
 
 (defun watch () (print 'evaluated!))
 (let ((y 2))
@@ -36,19 +40,18 @@
 (let ((x 2))
   (nth-expr x (watch) (+ 1 3) (watch) 'value))
 (let ((n 2))
+  ;; this evaluates without any errors despite division by zero
+  ;; the division is not evaluated because we are interested only
+  ;; in n-th expression!
   (nth-expr n (/ 1 0) (+ 1 2) (/ 1 0)))
-(do ((y 1 (incf y)))
-    ((= y 6) 'done)
-  (print (nth-expr y (+ 40 1) 'value (exp 2) (expt 2.713 2) (watch))))
 
 ;; ex-4
 (defmacro ntimes (n &rest body)
-  (if (<= n 0)
-      nil
+  (if (>= n 1)
       `(progn (ntimes ,(1- n) ,@body)
-	     ,@body)))
+	      ,@body)))
 
-(pprint (macroexpand-1 '(ntimes 3 (print 'hello))))
+(macroexpand-1 '(ntimes 3 (print 'hello)))
 (ntimes 5 (print "<br"))
 (let ((n 10))
   (ntimes 5
@@ -71,69 +74,32 @@
   (n-of n (incf i)))
 
 ;; ex-6
-;; TODO: redefine, this does not work
-(defmacro ensure (vars &rest body)
-  ;`(setf ,(car vars) 0)) ; works ok
-  (let ((setter (gensym))
-	(sym (gensym))
-	`(let ((setter (loop for sym in ',vars
-			     append (list sym ,sym))))
-	   (print setter)))))
-
-(let ((i 10)
-      (j 15)
-      (k 42))
-  (macroexpand-1 '(ensure (i j) (setf i))))
-(let ((i 10)
-      (j 15)
-      (k 42))
-  (ensure (i j k) (setf i 0)) ; TODO correct the error 
-  (format t "i: ~A; j: ~A; k: ~A" i j k))
-
-(defmacro test1 (args)
-  (let ((vals (gensym))
-	(w (gensym)))
-    `(let ((,vals (copy-list ,args)))
-       (print (loop for elt in ,args
-		 collect elt))
-       (print (let ((,w (car ,args)))) ,w)
-       (format t "3arg: ~A ~%" ,vals)
-       )))
-
-(defmacro test2 (args)
-    `(let ((w (car ,args)))
-       (print w)))
-
-(defmacro test3 (args &rest body)
-;  `(setf ,(car args) ,(cadr args)))
-;   `(format t "~A is set to ~A ~%" (car '(,@args)) ,(car args)))
-  (let ((restorer (gensym)))
-  `(let ((,restorer (loop for sym in '(,@args)
-	                  for val in (list ,@args)
-		       collect `(setf ,sym ',val))))
-     ,@body
-     ;,(progn restorer))))
-     (print ,restorer)
-     ,(car (list restorer)))))
-     
+(defmacro save-vars (vars &rest body)
+  `(let (,@(mapcar #'(lambda (var)
+		       `(,var ,var))
+		   vars))
+     ,@body))
 
 (let ((var 'some-symbol)
-      (n 42))
-  (macroexpand-1 (test3 (var n)
+      (n 42)
+      (fun (lambda (n) (+ n 1))))
+  (macroexpand-1 '(save-vars (var n)
 	 (setf var 'qwe)
 	 (setf n 0))))
 (let ((var 'some-symbol)
-      (n 42))
-  (macroexpand-1 '(test3 (var n)
+      (n 42)
+      (fun (lambda (n) (+ n 1)))
+      (unsaved 'possession))
+  (save-vars (var n fun)
 	 (setf var 'qwe)
-	 (setf n 0)))
-  (values var n))
-(let ((var 'some-symbol)
-      (n 42))
-  (test3 (var n)
-	 (setf var 'qwe)
-	 (setf n 0))
-  (values var n))
+	 (setf n 0)
+	 (dotimes (n 5)
+	   (incf n))
+	 (setf fun 'hiking)
+	 (setf unsaved 'redefined)
+	 (format t "inside block of code: n = ~A; fun = ~A ~%" n fun))
+   (values var n fun unsaved))
+
 ;; ex-7
 ;; TODO find the reason why this definition is bad compared to the real push
 ;; The only difference I noticed so far is using setf vs setq...
@@ -141,12 +107,14 @@
   `(setf ,lst (cons ,obj ,lst)))
 
 lst
-(defparameter lst '(b c))
+(defparameter lst (list 'b 'c))
 (cons lst (cons lst nil))
 (setf lst (cons lst lst))
-(pprint (macroexpand-1 '(my-push 'a lst)))
+(macroexpand-1 '(my-push 'a lst))
 (my-push 'a (cdr lst))
 (push 'a (cdr lst))
+(macroexpand-1 '(push 'a lst))
+lst
 
 ;; ex-8
 (defmacro my-double (x)
