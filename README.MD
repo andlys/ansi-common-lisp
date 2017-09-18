@@ -1,6 +1,6 @@
 ## Code scratches from Paul Graham's book 'ANSI Common Lisp'
 
-Currently, code is present only up to chapter 6.
+Currently, code is present only up to chapter 6 as well as chapter 10.
 
 Here are pieces of code which I typed manually myself
 in order to have some fun with Lisp. There are also 

@@ -73,22 +73,67 @@
 ;; ex-6
 ;; TODO: redefine, this does not work
 (defmacro ensure (vars &rest body)
-;  (let (,(car vars) 
-  `(prog1 (progn ,@(mapcar #'(lambda (var)
-			       `(setf var ,var))
-			   vars))
-     ,@body))
+  ;`(setf ,(car vars) 0)) ; works ok
+  (let ((setter (gensym))
+	(sym (gensym))
+	`(let ((setter (loop for sym in ',vars
+			     append (list sym ,sym))))
+	   (print setter)))))
 
 (let ((i 10)
       (j 15)
       (k 42))
-  (macroexpand-1 '(ensure (setf i (+ j 10)))))
+  (macroexpand-1 '(ensure (i j) (setf i))))
 (let ((i 10)
       (j 15)
       (k 42))
   (ensure (i j k) (setf i 0)) ; TODO correct the error 
   (format t "i: ~A; j: ~A; k: ~A" i j k))
 
+(defmacro test1 (args)
+  (let ((vals (gensym))
+	(w (gensym)))
+    `(let ((,vals (copy-list ,args)))
+       (print (loop for elt in ,args
+		 collect elt))
+       (print (let ((,w (car ,args)))) ,w)
+       (format t "3arg: ~A ~%" ,vals)
+       )))
+
+(defmacro test2 (args)
+    `(let ((w (car ,args)))
+       (print w)))
+
+(defmacro test3 (args &rest body)
+;  `(setf ,(car args) ,(cadr args)))
+;   `(format t "~A is set to ~A ~%" (car '(,@args)) ,(car args)))
+  (let ((restorer (gensym)))
+  `(let ((,restorer (loop for sym in '(,@args)
+	                  for val in (list ,@args)
+		       collect `(setf ,sym ',val))))
+     ,@body
+     ;,(progn restorer))))
+     (print ,restorer)
+     ,(car (list restorer)))))
+     
+
+(let ((var 'some-symbol)
+      (n 42))
+  (macroexpand-1 (test3 (var n)
+	 (setf var 'qwe)
+	 (setf n 0))))
+(let ((var 'some-symbol)
+      (n 42))
+  (macroexpand-1 '(test3 (var n)
+	 (setf var 'qwe)
+	 (setf n 0)))
+  (values var n))
+(let ((var 'some-symbol)
+      (n 42))
+  (test3 (var n)
+	 (setf var 'qwe)
+	 (setf n 0))
+  (values var n))
 ;; ex-7
 ;; TODO find the reason why this definition is bad compared to the real push
 ;; The only difference I noticed so far is using setf vs setq...
